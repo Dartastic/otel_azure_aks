@@ -2,7 +2,6 @@
 // Copyright 2025-2026 Mindful Software LLC d/b/a Dartastic.io, All rights reserved.
 
 import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
-import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart';
 
 import 'otel_azure_aks_suppression.dart';
 
@@ -48,42 +47,54 @@ Future<T> tracedAzureAKS<T>({
   final t = tracer ?? OTel.tracerProvider().getTracer('otel_azure_aks');
   final span = t.startSpan('aks $operation', kind: SpanKind.client);
   try {
-    span.setStringAttribute('azure.service', 'aks');
+    span.addAttributes(
+        OTel.attributes([OTel.attributeString('azure.service', 'aks')]));
     final r = await invoke();
     final res = r.result;
     if (res != null) {
       if (res.subscriptionId != null) {
-        span.setStringAttribute('azure.subscription.id', res.subscriptionId!);
+        span.addAttributes(OTel.attributes([
+          OTel.attributeString('azure.subscription.id', res.subscriptionId!)
+        ]));
       }
       if (res.resourceGroup != null) {
-        span.setStringAttribute('azure.resource_group', res.resourceGroup!);
+        span.addAttributes(OTel.attributes([
+          OTel.attributeString('azure.resource_group', res.resourceGroup!)
+        ]));
       }
       if (res.clusterName != null) {
-        span.setStringAttribute('k8s.cluster.name', res.clusterName!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeString('k8s.cluster.name', res.clusterName!)]));
       }
       if (res.version != null) {
-        span.setStringAttribute('k8s.cluster.version', res.version!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeString('k8s.cluster.version', res.version!)]));
       }
       if (res.nodePool != null) {
-        span.setStringAttribute('azure.aks.node_pool', res.nodePool!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeString('azure.aks.node_pool', res.nodePool!)]));
       }
       if (res.region != null) {
-        span.setStringAttribute('cloud.region', res.region!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeString('cloud.region', res.region!)]));
       }
       if (res.statusCode != null) {
-        span.setIntAttribute('http.response.status_code', res.statusCode!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeInt('http.response.status_code', res.statusCode!)]));
       }
       if (res.errorCode != null) {
-        span.setStringAttribute('aks.error.code', res.errorCode!);
+        span.addAttributes(OTel.attributes(
+            [OTel.attributeString('aks.error.code', res.errorCode!)]));
       }
-      final fail =
-          res.errorCode != null ||
+      final fail = res.errorCode != null ||
           (res.statusCode != null && res.statusCode! >= 400);
       if (fail) {
-        span.setStringAttribute(
-          ErrorResource.errorType.key,
-          res.errorCode ?? 'aks.error',
-        );
+        span.addAttributes(OTel.attributes([
+          OTel.attributeString(
+            ErrorResource.errorType.key,
+            res.errorCode ?? 'aks.error',
+          )
+        ]));
         span.setStatus(SpanStatusCode.Error, res.errorMessage);
       }
     }
