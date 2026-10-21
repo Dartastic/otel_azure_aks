@@ -1,11 +1,12 @@
-// Licensed under the Dartastic Pro Software License Agreement.
+// Licensed under the Apache License, Version 2.0
 // Copyright 2025-2026 Mindful Software LLC d/b/a Dartastic.io, All rights reserved.
 
-import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
+import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart';
 
 import 'otel_azure_aks_suppression.dart';
 
 class AzureAKSResult {
+  /// Creates a result.
   const AzureAKSResult({
     this.subscriptionId,
     this.resourceGroup,
@@ -29,8 +30,13 @@ class AzureAKSResult {
   final String? errorMessage;
 }
 
+/// What a traced call returned: the value for the caller plus fields
+/// recorded on the span.
 class AzureAKSCallResult<T> {
+  /// Creates a call result.
   const AzureAKSCallResult({required this.value, this.result});
+
+  /// The value returned to the caller.
   final T value;
   final AzureAKSResult? result;
 }
@@ -38,60 +44,61 @@ class AzureAKSCallResult<T> {
 Future<T> tracedAzureAKS<T>({
   required String operation,
   required Future<AzureAKSCallResult<T>> Function() invoke,
-  Tracer? tracer,
+  APITracer? tracer,
 }) async {
   if (azureAKSInstrumentationSuppressed()) {
     final r = await invoke();
     return r.value;
   }
-  final t = tracer ?? OTel.tracerProvider().getTracer('otel_azure_aks');
+  final t = tracer ?? OTelAPI.tracerProvider().getTracer('otel_azure_aks');
   final span = t.startSpan('aks $operation', kind: SpanKind.client);
   try {
     span.addAttributes(
-        OTel.attributes([OTel.attributeString('azure.service', 'aks')]));
+        OTelAPI.attributes([OTelAPI.attributeString('azure.service', 'aks')]));
     final r = await invoke();
     final res = r.result;
     if (res != null) {
       if (res.subscriptionId != null) {
-        span.addAttributes(OTel.attributes([
-          OTel.attributeString('azure.subscription.id', res.subscriptionId!)
+        span.addAttributes(OTelAPI.attributes([
+          OTelAPI.attributeString('azure.subscription.id', res.subscriptionId!)
         ]));
       }
       if (res.resourceGroup != null) {
-        span.addAttributes(OTel.attributes([
-          OTel.attributeString('azure.resource_group', res.resourceGroup!)
+        span.addAttributes(OTelAPI.attributes([
+          OTelAPI.attributeString('azure.resource_group', res.resourceGroup!)
         ]));
       }
       if (res.clusterName != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeString('k8s.cluster.name', res.clusterName!)]));
+        span.addAttributes(OTelAPI.attributes(
+            [OTelAPI.attributeString('k8s.cluster.name', res.clusterName!)]));
       }
       if (res.version != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeString('k8s.cluster.version', res.version!)]));
+        span.addAttributes(OTelAPI.attributes(
+            [OTelAPI.attributeString('k8s.cluster.version', res.version!)]));
       }
       if (res.nodePool != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeString('azure.aks.node_pool', res.nodePool!)]));
+        span.addAttributes(OTelAPI.attributes(
+            [OTelAPI.attributeString('azure.aks.node_pool', res.nodePool!)]));
       }
       if (res.region != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeString('cloud.region', res.region!)]));
+        span.addAttributes(OTelAPI.attributes(
+            [OTelAPI.attributeString('cloud.region', res.region!)]));
       }
       if (res.statusCode != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeInt('http.response.status_code', res.statusCode!)]));
+        span.addAttributes(OTelAPI.attributes([
+          OTelAPI.attributeInt('http.response.status_code', res.statusCode!)
+        ]));
       }
       if (res.errorCode != null) {
-        span.addAttributes(OTel.attributes(
-            [OTel.attributeString('aks.error.code', res.errorCode!)]));
+        span.addAttributes(OTelAPI.attributes(
+            [OTelAPI.attributeString('aks.error.code', res.errorCode!)]));
       }
       final fail = res.errorCode != null ||
           (res.statusCode != null && res.statusCode! >= 400);
       if (fail) {
-        span.addAttributes(OTel.attributes([
-          OTel.attributeString(
-            ErrorResource.errorType.key,
+        span.addAttributes(OTelAPI.attributes([
+          OTelAPI.attributeString(
+            ErrorAttributes.errorType.key,
             res.errorCode ?? 'aks.error',
           )
         ]));
